@@ -12,8 +12,10 @@ public class ConfigurationManager {
     private static ConfigurationManager configurationManager;
     private static Configuration currentConfiguration;
 
+    // private so only one instance can be created server-wide
     private ConfigurationManager() {}
 
+    // singleton: creates the manager on first call, then reuses the same one
     public static ConfigurationManager getInstance() {
         if (configurationManager == null) {
             configurationManager = new ConfigurationManager();
@@ -22,9 +24,7 @@ public class ConfigurationManager {
         return configurationManager;
     }
 
-    /**
-     * For loading a configuration file with the path given
-     */
+    // For loading a configuration file with the path given
     public void loadConfigurationFile(String filePath) {
         // StringBuffer sb = new StringBuffer();
         StringBuilder sb = new StringBuilder();
@@ -40,6 +40,7 @@ public class ConfigurationManager {
             throw new HttpConfigurationException("Error Reading Configuration File", e);
         }
 
+        // step 1: raw text to generic JSON tree
         JsonNode config = null;
         try {
             config = Json.parse(sb.toString());
@@ -47,6 +48,7 @@ public class ConfigurationManager {
             throw new HttpConfigurationException("Error parsing the Configuration File", e);
         }
 
+        // step 2: JSON tree to Configuration object (Jackson calls the setters)
         try {
             currentConfiguration = Json.fromJson(config, Configuration.class);
         } catch (JsonProcessingException e) {
@@ -54,10 +56,9 @@ public class ConfigurationManager {
         }
     }
 
-    /**
-     * Returns the current loaded configuration
-     */
+    // Returns the current loaded configuration
     public Configuration getCurrentConfiguration() {
+        // fails if loadConfigurationFile() was never called
         if (currentConfiguration == null) {
             throw new HttpConfigurationException("No Current Configuration Set.");
         }

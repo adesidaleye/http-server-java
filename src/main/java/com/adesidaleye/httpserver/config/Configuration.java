@@ -1,5 +1,6 @@
 package com.adesidaleye.httpserver.config;
 
+// field names matches the keys in http.json, Jackson uses the setters to fill in fields from JsonNode
 public class Configuration {
     private int port;
     private String webroot;

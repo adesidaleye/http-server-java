@@ -17,22 +17,27 @@ public class ServerListenerThread extends Thread{
     public ServerListenerThread(int port, String webroot) throws IOException {
         this.port = port;
         this.webroot = webroot;
+
+        // binds to the port
         this.serverSocket = new ServerSocket(this.port);
     }
 
     @Override
     public void run() {
         try {
+            // keep listening until the server socket is closed
             while (serverSocket.isBound() && !serverSocket.isClosed()) {
                 Socket socket = serverSocket.accept();
                 LOGGER.info("Connection accepted: {}", socket.getInetAddress());
 
+                // each client gets its own thread so this loop can go straight back to accept()
                 HttpConnectionWorkerThread workerThread = new HttpConnectionWorkerThread(socket);
                 workerThread.start();
             }
         } catch (IOException e) {
             LOGGER.error("Failure connecting socket", e);
         } finally {
+            // always release the port, even if the loop crashed
             if (serverSocket != null) {
                 try {
                     serverSocket.close();

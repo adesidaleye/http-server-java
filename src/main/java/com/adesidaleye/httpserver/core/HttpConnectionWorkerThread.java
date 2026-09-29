@@ -8,9 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
-/**
- * Handles communication and messages on different thread
- */
+// Handles communication and messages on different thread
 public class HttpConnectionWorkerThread extends Thread{
     private final static Logger LOGGER = LoggerFactory.getLogger(HttpConnectionWorkerThread.class);
     private Socket socket;
@@ -27,7 +25,8 @@ public class HttpConnectionWorkerThread extends Thread{
         try {
             inputStream = socket.getInputStream();
             outputStream = socket.getOutputStream();
-            // reading
+
+            // reading from client (browser)
 
             // writing to client
             String html = """
@@ -38,7 +37,7 @@ public class HttpConnectionWorkerThread extends Thread{
                     </body>
                     </html>
                     """;
-            final String CRLF = "\r\n";
+            final String CRLF = "\r\n"; // HTTP line ending
 
             String response =
                     "HTTP/1.1 200 OK" + CRLF + // Status line
@@ -52,6 +51,7 @@ public class HttpConnectionWorkerThread extends Thread{
         } catch (IOException e) {
             LOGGER.error("Connection Processing Failed", e);
         } finally {
+            // close all streams and sockets, even if something failed above
             if (inputStream != null) {
                 try {
                     inputStream.close();
