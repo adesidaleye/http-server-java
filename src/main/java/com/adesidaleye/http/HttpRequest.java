@@ -1,10 +1,15 @@
 package com.adesidaleye.http;
 
+import java.util.HashMap;
+import java.util.Set;
+
 public class HttpRequest extends HttpMessage{
     private HttpMethod method;
     private String requestTarget;
     private String originalHttpVersion; // literal from request
     private HttpVersion bestCompatibleHttpVersion;
+
+    private HashMap<String, String> headers = new HashMap<>();
 
     // package-private
     HttpRequest() {}
@@ -57,5 +62,20 @@ public class HttpRequest extends HttpMessage{
         if (this.bestCompatibleHttpVersion == null) {
             throw new HttpParsingException(HttpStatusCode.SERVER_505_HTTP_VERSION_NOT_SUPPORTED);
         }
+    }
+
+    // just the header names, for checking how many headers were parsed
+    public Set<String> getHeaderNames() {
+        return headers.keySet();
+    }
+
+    // lowercase the lookup key so for example "Host", "host", "HOST" all find the same entry
+    public String getHeader(String headerName) {
+        return headers.get(headerName.toLowerCase());
+    }
+
+    // called by HttpParser.processSingleHeaderField for every valid header line found
+    public void addHeader(String headerName, String headerValue) {
+        headers.put(headerName.toLowerCase(), headerValue);
     }
 }
