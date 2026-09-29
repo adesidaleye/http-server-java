@@ -31,7 +31,7 @@ public class HttpParser {
     // parse request line (method, path, version)
     private void parseRequestLine(InputStreamReader reader, HttpRequest request) throws HttpParsingException {
         // holds whatever item (method/target/version) is currently being read, cleared after each SP
-        StringBuilder processingRequest = new StringBuilder();
+        StringBuilder processingRequestBuffer = new StringBuilder();
 
         /* tracks which piece of the request line I'm currently reading
         * both false = reading method,
@@ -48,10 +48,16 @@ public class HttpParser {
                     _byte = reader.read();
 
                     if (_byte == LF) {
-                        LOGGER.debug("Request Line VERSION to Process: {}", processingRequest.toString());
+                        LOGGER.debug("Request Line VERSION to Process: {}", processingRequestBuffer.toString());
 
                         // line ended but method and/or target were never set, bad request
                         if (!methodParsed || !requestTargetParsed) {
+                            throw new HttpParsingException(HttpStatusCode.CLIENT_ERROR_400_BAD_REQUEST);
+                        }
+
+                        try {
+                            request.setHttpVersion(processingRequestBuffer.toString());
+                        } catch (BadHttpVersionException e) {
                             throw new HttpParsingException(HttpStatusCode.CLIENT_ERROR_400_BAD_REQUEST);
                         }
 
@@ -65,14 +71,14 @@ public class HttpParser {
                 if (_byte == SP) {
                     // Process stored request data
                     if (!methodParsed) {
-                        LOGGER.debug("Request Line METHOD to Process: {}", processingRequest.toString());
+                        LOGGER.debug("Request Line METHOD to Process: {}", processingRequestBuffer.toString());
 
-                        request.setMethod(processingRequest.toString());
+                        request.setMethod(processingRequestBuffer.toString());
                         methodParsed = true;
                     } else if (!requestTargetParsed) {
-                        LOGGER.debug("Request Line REQ TARGET to Process: {}", processingRequest.toString());
+                        LOGGER.debug("Request Line REQ TARGET to Process: {}", processingRequestBuffer.toString());
 
-                        request.setRequestTarget(processingRequest.toString());
+                        request.setRequestTarget(processingRequestBuffer.toString());
                         requestTargetParsed = true;
                     } else {
                         // a third space would mean a third piece, bad request
@@ -80,10 +86,10 @@ public class HttpParser {
                     }
 
                     // clear the buffer
-                    processingRequest.delete(0, processingRequest.length());
+                    processingRequestBuffer.delete(0, processingRequestBuffer.length());
                 } else {
                     // not CR, LF, or SP, so it's a normal character, keep building the current piece
-                    processingRequest.append((char) _byte);
+                    processingRequestBuffer.append((char) _byte);
                 }
             }
         } catch (IOException e) {
@@ -91,7 +97,7 @@ public class HttpParser {
 
             // if what's been read so far is already longer than any real method name, throw exception
             if (!methodParsed) {
-                if (processingRequest.length() > HttpMethod.MAX_LENGTH) {
+                if (processingRequestBuffer.length() > HttpMethod.MAX_LENGTH) {
                     throw new HttpParsingException(HttpStatusCode.SERVER_ERROR_501_NOT_IMPLEMENTED);
                 }
             }

@@ -33,6 +33,8 @@ class HttpParserTest {
         assertNotNull(request);
         assertEquals(HttpMethod.GET, request.getMethod());
         assertEquals("/", request.getRequestTarget());
+        assertEquals("HTTP/1.1", request.getOriginalHttpVersion());
+        assertEquals(HttpVersion.HTTP_1_1, request.getBestCompatibleHttpVersion());
     }
 
     @Test
@@ -82,6 +84,39 @@ class HttpParserTest {
             fail();
         } catch (HttpParsingException e) {
             assertEquals(HttpStatusCode.CLIENT_ERROR_400_BAD_REQUEST, e.getErrorCode());
+        }
+    }
+
+    @Test
+    void parseBadHttpVersionRequest() {
+        try {
+            httpParser.parseHttpRequest(generateBadHttpVersionRequest());
+            fail();
+        } catch (HttpParsingException e) {
+            assertEquals(HttpStatusCode.CLIENT_ERROR_400_BAD_REQUEST, e.getErrorCode());
+        }
+    }
+
+    @Test
+    void parseUnsupportedHttpVersionRequest() {
+        try {
+            httpParser.parseHttpRequest(generateUnsupportedHttpVersionRequest());
+            fail();
+        } catch (HttpParsingException e) {
+            assertEquals(HttpStatusCode.SERVER_505_HTTP_VERSION_NOT_SUPPORTED, e.getErrorCode());
+        }
+    }
+
+    @Test
+    void parseHigherSupportedHttpVersionRequest() {
+        try {
+            HttpRequest request = httpParser.parseHttpRequest(generateHigherSupportedHttpVersionRequest());
+
+            assertNotNull(request);
+            assertEquals(request.getOriginalHttpVersion(), "HTTP/1.2");
+            assertEquals(HttpVersion.HTTP_1_1, request.getBestCompatibleHttpVersion());
+        } catch (HttpParsingException e) {
+            fail(e);
         }
     }
 
@@ -163,6 +198,81 @@ class HttpParserTest {
     private InputStream generateBadTestCaseNoLFRequestLine() {
         String rawData = "\r" +
                 "Host: localhost:8080\r\n" +
+                "Accept-Language: en-US,en;q=0.7\r\n" +
+                "\r\n";
+
+        InputStream inputStream = new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII)); // US_ASCII because HTTP headers are plain ASCII
+
+        return inputStream;
+    }
+
+    private InputStream generateBadHttpVersionRequest() {
+        String rawData = "GET / HTP/1.1\r\n" +
+                "Host: localhost:8080\r\n" +
+                "Connection: keep-alive\r\n" +
+                "Cache-Control: max-age=0\r\n" +
+                "sec-ch-ua: \"Chromium\";v=\"154\", \"Brave\";v=\"154\", \"Not A(Brand\";v=\"99\"\r\n" +
+                "sec-ch-ua-mobile: ?0\r\n" +
+                "sec-ch-ua-platform: \"Windows\"\r\n" +
+                "Upgrade-Insecure-Requests: 1\r\n" +
+                "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36\r\n" +
+                "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8\r\n" +
+                "Sec-GPC: 1\r\n" +
+                "Sec-Fetch-Site: none\r\n" +
+                "Sec-Fetch-Mode: navigate\r\n" +
+                "Sec-Fetch-User: ?1\r\n" +
+                "Sec-Fetch-Dest: document\r\n" +
+                "Accept-Encoding: gzip, deflate, br, zstd\r\n" +
+                "Accept-Language: en-US,en;q=0.7\r\n" +
+                "\r\n";
+
+        InputStream inputStream = new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII)); // US_ASCII because HTTP headers are plain ASCII
+
+        return inputStream;
+    }
+
+    private InputStream generateUnsupportedHttpVersionRequest() {
+        String rawData = "GET / HTTP/2.1\r\n" +
+                "Host: localhost:8080\r\n" +
+                "Connection: keep-alive\r\n" +
+                "Cache-Control: max-age=0\r\n" +
+                "sec-ch-ua: \"Chromium\";v=\"154\", \"Brave\";v=\"154\", \"Not A(Brand\";v=\"99\"\r\n" +
+                "sec-ch-ua-mobile: ?0\r\n" +
+                "sec-ch-ua-platform: \"Windows\"\r\n" +
+                "Upgrade-Insecure-Requests: 1\r\n" +
+                "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36\r\n" +
+                "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8\r\n" +
+                "Sec-GPC: 1\r\n" +
+                "Sec-Fetch-Site: none\r\n" +
+                "Sec-Fetch-Mode: navigate\r\n" +
+                "Sec-Fetch-User: ?1\r\n" +
+                "Sec-Fetch-Dest: document\r\n" +
+                "Accept-Encoding: gzip, deflate, br, zstd\r\n" +
+                "Accept-Language: en-US,en;q=0.7\r\n" +
+                "\r\n";
+
+        InputStream inputStream = new ByteArrayInputStream(rawData.getBytes(StandardCharsets.US_ASCII)); // US_ASCII because HTTP headers are plain ASCII
+
+        return inputStream;
+    }
+
+    private InputStream generateHigherSupportedHttpVersionRequest() {
+        String rawData = "GET / HTTP/1.2\r\n" +
+                "Host: localhost:8080\r\n" +
+                "Connection: keep-alive\r\n" +
+                "Cache-Control: max-age=0\r\n" +
+                "sec-ch-ua: \"Chromium\";v=\"154\", \"Brave\";v=\"154\", \"Not A(Brand\";v=\"99\"\r\n" +
+                "sec-ch-ua-mobile: ?0\r\n" +
+                "sec-ch-ua-platform: \"Windows\"\r\n" +
+                "Upgrade-Insecure-Requests: 1\r\n" +
+                "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36\r\n" +
+                "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8\r\n" +
+                "Sec-GPC: 1\r\n" +
+                "Sec-Fetch-Site: none\r\n" +
+                "Sec-Fetch-Mode: navigate\r\n" +
+                "Sec-Fetch-User: ?1\r\n" +
+                "Sec-Fetch-Dest: document\r\n" +
+                "Accept-Encoding: gzip, deflate, br, zstd\r\n" +
                 "Accept-Language: en-US,en;q=0.7\r\n" +
                 "\r\n";
 
