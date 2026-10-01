@@ -1,5 +1,6 @@
 package com.adesidaleye.httpserver.core;
 
+import com.adesidaleye.httpserver.core.io.WebRootHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,12 +12,12 @@ public class ServerListenerThread extends Thread{
     private final static Logger LOGGER = LoggerFactory.getLogger(ServerListenerThread.class);
 
     private int port;
-    private String webroot;
+    private WebRootHandler webRootHandler;
     private ServerSocket serverSocket;
 
-    public ServerListenerThread(int port, String webroot) throws IOException {
+    public ServerListenerThread(int port, WebRootHandler webRootHandler) throws IOException {
         this.port = port;
-        this.webroot = webroot;
+        this.webRootHandler = webRootHandler;
 
         // binds to the port
         this.serverSocket = new ServerSocket(this.port);
@@ -31,7 +32,7 @@ public class ServerListenerThread extends Thread{
                 LOGGER.info("Connection accepted: {}", socket.getInetAddress());
 
                 // each client gets its own thread so this loop can go straight back to accept()
-                HttpConnectionWorkerThread workerThread = new HttpConnectionWorkerThread(socket);
+                HttpConnectionWorkerThread workerThread = new HttpConnectionWorkerThread(socket, webRootHandler);
                 workerThread.start();
             }
         } catch (IOException e) {

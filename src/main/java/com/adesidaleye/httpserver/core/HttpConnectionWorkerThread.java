@@ -1,8 +1,16 @@
 package com.adesidaleye.httpserver.core;
 
+import com.adesidaleye.http.HttpParser;
+import com.adesidaleye.http.HttpParsingException;
+import com.adesidaleye.http.HttpRequest;
+import com.adesidaleye.http.HttpStatusCode;
+import com.adesidaleye.httpserver.core.io.ReadFileException;
+import com.adesidaleye.httpserver.core.io.WebRootHandler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -12,9 +20,11 @@ import java.net.Socket;
 public class HttpConnectionWorkerThread extends Thread{
     private final static Logger LOGGER = LoggerFactory.getLogger(HttpConnectionWorkerThread.class);
     private Socket socket;
+    private WebRootHandler webRootHandler;
 
-    public HttpConnectionWorkerThread(Socket socket) {
+    public HttpConnectionWorkerThread(Socket socket, WebRootHandler webRootHandler) {
         this.socket = socket;
+        this.webRootHandler = webRootHandler;
     }
 
     @Override
@@ -26,26 +36,36 @@ public class HttpConnectionWorkerThread extends Thread{
             inputStream = socket.getInputStream();
             outputStream = socket.getOutputStream();
 
-            // reading from client (browser)
-
-            // writing to client
-            String html = """
-                    <html>
-                    <head><title>Simple Java HTTP Server</title></head>
-                    <body>
-                        <h1>This page was served using a Simple Java HTTP Server</h1>
-                    </body>
-                    </html>
-                    """;
             final String CRLF = "\r\n"; // HTTP line ending
 
-            String response =
-                    "HTTP/1.1 200 OK" + CRLF + // Status line
-                            "Content-Length: " + html.getBytes().length + CRLF + // Header
-                            CRLF +
-                            html;
+            try {
+                HttpParser httpParser = new HttpParser();
+                HttpRequest request = httpParser.parseHttpRequest(inputStream);
 
-            outputStream.write(response.getBytes());
+                String requestTarget = request.getRequestTarget();
+
+                try {
+                    byte[] fileBytes = webRootHandler.getFileByteArrayData(requestTarget);
+                    String mimeType = webRootHandler.getFileMimeType(requestTarget);
+
+                    String responseHeaders =
+                            "HTTP/1.1 200 OK" + CRLF +
+                            "Content-Type: " + mimeType + CRLF +
+                            "Content-Length: " + fileBytes.length + CRLF +
+                            CRLF;
+
+                    // headers as text, body as raw bytes
+                    outputStream.write(responseHeaders.getBytes());
+                    outputStream.write(fileBytes);
+
+                } catch (FileNotFoundException e) {
+                    sendErrorResponse(outputStream, HttpStatusCode.CLIENT_ERROR_404_NOT_FOUND);
+                } catch (ReadFileException e) {
+                    sendErrorResponse(outputStream, HttpStatusCode.SERVER_ERROR_500_INTERNAL_SERVER_ERROR);
+                }
+            } catch (HttpParsingException e) {
+                sendErrorResponse(outputStream, e.getErrorCode());
+            }
 
             LOGGER.info("Connection Processing Finished");
         } catch (IOException e) {
@@ -70,5 +90,20 @@ public class HttpConnectionWorkerThread extends Thread{
                 } catch (IOException e) {}
             }
         }
+    }
+
+    // builds and sends a minimal error response using a real status code
+    public void sendErrorResponse(OutputStream outputStream, HttpStatusCode statusCode) throws IOException {
+        final String CRLF = "\r\n";
+        String body = "<html><body><h1>" + statusCode.STATUS_CODE + " " + statusCode.MESSAGE + "</h1></body></html>";
+
+        String response =
+                "HTTP/1.1 " + statusCode.STATUS_CODE + " " + statusCode.MESSAGE + CRLF +
+                "Content-Type: text/html" + CRLF +
+                "Content-Length: " + body.getBytes().length + CRLF +
+                CRLF +
+                body;
+
+        outputStream.write(response.getBytes());
     }
 }

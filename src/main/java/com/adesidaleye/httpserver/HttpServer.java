@@ -3,8 +3,12 @@ package com.adesidaleye.httpserver;
 import com.adesidaleye.httpserver.config.Configuration;
 import com.adesidaleye.httpserver.config.ConfigurationManager;
 import com.adesidaleye.httpserver.core.ServerListenerThread;
+import com.adesidaleye.httpserver.core.io.WebRootHandler;
+import com.adesidaleye.httpserver.core.io.WebRootNotFoundException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 
 public class HttpServer {
@@ -21,12 +25,14 @@ public class HttpServer {
         LOGGER.info("Using webRoot: {}", config.getWebroot());
 
         try {
+            WebRootHandler webRootHandler = new WebRootHandler(config.getWebroot());
+
             // constructor opens the port, throws exception if the port is already in use
-            ServerListenerThread listenerThread = new ServerListenerThread(config.getPort(), config.getWebroot());
+            ServerListenerThread listenerThread = new ServerListenerThread(config.getPort(), webRootHandler);
 
             // runs the accept() loop on its own thread, not on main
             listenerThread.start();
-        } catch (IOException e) {
+        } catch (IOException | WebRootNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
