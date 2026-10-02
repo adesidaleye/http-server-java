@@ -25,6 +25,7 @@ public class HttpServer {
         LOGGER.info("Using webRoot: {}", config.getWebroot());
 
         try {
+            // fails here if the configured webroot folder doesn't exist on disk
             WebRootHandler webRootHandler = new WebRootHandler(config.getWebroot());
 
             // constructor opens the port, throws exception if the port is already in use

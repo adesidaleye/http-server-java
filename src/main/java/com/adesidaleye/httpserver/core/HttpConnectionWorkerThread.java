@@ -20,6 +20,11 @@ import java.net.Socket;
 public class HttpConnectionWorkerThread extends Thread{
     private final static Logger LOGGER = LoggerFactory.getLogger(HttpConnectionWorkerThread.class);
     private Socket socket;
+
+    /**
+     * one shared WebRootHandler passed in, not created per-connection,
+     * so every request hits the same resolved webroot and its path-traversal checks
+     */
     private WebRootHandler webRootHandler;
 
     public HttpConnectionWorkerThread(Socket socket, WebRootHandler webRootHandler) {
@@ -39,12 +44,14 @@ public class HttpConnectionWorkerThread extends Thread{
             final String CRLF = "\r\n"; // HTTP line ending
 
             try {
+                // parse the raw bytes into method/target/headers
                 HttpParser httpParser = new HttpParser();
                 HttpRequest request = httpParser.parseHttpRequest(inputStream);
 
                 String requestTarget = request.getRequestTarget();
 
                 try {
+                    // validate the path and check for traversal internally
                     byte[] fileBytes = webRootHandler.getFileByteArrayData(requestTarget);
                     String mimeType = webRootHandler.getFileMimeType(requestTarget);
 
@@ -59,11 +66,14 @@ public class HttpConnectionWorkerThread extends Thread{
                     outputStream.write(fileBytes);
 
                 } catch (FileNotFoundException e) {
+                    // file is missing, or caught by the path-traversal check
                     sendErrorResponse(outputStream, HttpStatusCode.CLIENT_ERROR_404_NOT_FOUND);
                 } catch (ReadFileException e) {
+                    // file exists but reading it failed
                     sendErrorResponse(outputStream, HttpStatusCode.SERVER_ERROR_500_INTERNAL_SERVER_ERROR);
                 }
             } catch (HttpParsingException e) {
+                // malformed request, reuse status code the thrown exception carries
                 sendErrorResponse(outputStream, e.getErrorCode());
             }
 
@@ -92,7 +102,7 @@ public class HttpConnectionWorkerThread extends Thread{
         }
     }
 
-    // builds and sends a minimal error response using a real status code
+    // builds and sends a minimal error response using a real status code, so error responses all look the same shape
     public void sendErrorResponse(OutputStream outputStream, HttpStatusCode statusCode) throws IOException {
         final String CRLF = "\r\n";
         String body = "<html><body><h1>" + statusCode.STATUS_CODE + " " + statusCode.MESSAGE + "</h1></body></html>";
