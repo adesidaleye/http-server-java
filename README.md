@@ -1,8 +1,8 @@
 # http-server-java
 
-A multithreaded HTTP/1.1 server built from raw Java sockets — no frameworks, no `com.sun.net.httpserver`. Parses real HTTP requests byte-by-byte, serves static files from a configurable web root, and returns correct HTTP status codes on failure.
+A multithreaded HTTP/1.1 server built from raw Java sockets. Parses real HTTP requests byte-by-byte, serves static files from a configurable web root, and returns correct HTTP status codes on failure.
 
-Built as a learning project to understand what web frameworks (like Spring Boot) actually do under the hood before using one.
+Built as a learning project to understand what web frameworks actually do under the hood before using one.
 
 ## Features
 
