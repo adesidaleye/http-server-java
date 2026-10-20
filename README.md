@@ -1,4 +1,4 @@
-# http-server-java
+# HTTP Server written in Java
 
 A multithreaded HTTP/1.1 server built from raw Java sockets — no frameworks, no `com.sun.net.httpserver`. Parses real HTTP requests byte-by-byte, serves static files from a configurable web root, and returns correct HTTP status codes on failure.
 
@@ -43,12 +43,14 @@ Files placed in the `webroot` directory (e.g. `webRoot/index.html`) are served d
 
 ## Architecture
 
-![Architecture Diagram](./assets/architecture.svg)
+![Architecture Diagram](./docs/images/architecture.png)
 
-- **`com.adesidaleye.http`** — protocol-level types: `HttpRequest`, `HttpMethod`, `HttpVersion`, `HttpStatusCode`, and `HttpParser` (the actual parsing logic).
-- **`com.adesidaleye.httpserver.core`** — the networking layer: accepting connections and handling each one on its own thread.
-- **`com.adesidaleye.httpserver.core.io`** — `WebRootHandler`, which safely resolves a request path to a file on disk.
-- **`com.adesidaleye.httpserver.config`** — loads and exposes `http.json` as a `Configuration` object via a singleton `ConfigurationManager`.
+- **`ServerListenerThread`**: listens on the configured port, accepts incoming connections, and hands each one to its own worker thread.
+- **`HttpConnectionWorkerThread`**: handles a single connection by reading the request, building the response, and writing it back to the socket.
+- **`HttpParser`**: reads the raw request bytes into a request line and headers (`HttpRequest`, `HttpMethod`, `HttpVersion`).
+- **`WebRootHandler`**: resolves the requested path to a file in the web root, blocks path traversal, and returns the file's bytes and MIME type.
+- **Error handling**: malformed requests and failed file lookups return the matching status (400, 404, 500, 501, 505) through `HttpStatusCode`, instead of a generic success.
+- **Configuration**: `http.json` (port and web root) is loaded once at startup through a singleton `ConfigurationManager`.
 
 ## Known limitations
 
