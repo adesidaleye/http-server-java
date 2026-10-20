@@ -41,7 +41,7 @@ Edit `src/main/resources/http.json`:
 
 Files placed in the `webroot` directory (e.g. `webRoot/index.html`) are served directly — `/` maps to `index.html`, `/logo.png` maps to `webRoot/logo.png`, and so on.
 
-## Architecture
+## Request Flow
 
 ![Architecture Diagram](./docs/images/architecture.png)
 
